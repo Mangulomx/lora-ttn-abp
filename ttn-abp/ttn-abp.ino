@@ -81,7 +81,7 @@ const lmic_pinmap lmic_pins = {
 void onEvent (ev_t ev) {
     Serial.print(os_getTime());
     u8x8.setCursor(0, 5);
- u8x8.printf("TIME %lu", os_getTime()); 
+ u8x8.printf("TIME %lu", os_getTime());
     Serial.print(": ");
     switch(ev) {
         case EV_SCAN_TIMEOUT:
@@ -107,7 +107,7 @@ void onEvent (ev_t ev) {
         case EV_JOINED:
             Serial.println(F("EV_JOINED"));
             u8x8.drawString(0, 7, "EV_JOINED");
-            LMIC_setLinkCheckMode(0); 
+            LMIC_setLinkCheckMode(0);
             break;
         case EV_RFU1:
             Serial.println(F("EV_RFU1"));
@@ -135,7 +135,7 @@ void onEvent (ev_t ev) {
               u8x8.printf("%i bytes", LMIC.dataLen);
               Serial.println(F(" bytes of payload"));
               u8x8.setCursor(0, 7);
-              u8x8.printf("RSSI %d SNR %.1d", LMIC.rssi,LMIC.snr); 
+              u8x8.printf("RSSI %d SNR %.1d", LMIC.rssi,LMIC.snr);
             }
             // Schedule next transmission
             os_setTimedCallback(&sendjob, os_getTime()+sec2osticks(TX_INTERVAL), do_send);
@@ -189,7 +189,7 @@ void setup() {
 
     u8x8.begin();
     u8x8.setFont(u8x8_font_chroma48medium8_r);
-    u8x8.drawString(0, 1, "LoRaWAN LMiC TTN Node..."); 
+    u8x8.drawString(0, 1, "LoRaWAN LMiC TTN Node...");
 
     SPI.begin(5, 19, 27);
     #ifdef VCC_ENABLE
@@ -243,7 +243,8 @@ void setup() {
     // devices' ping slots. LMIC does not have an easy way to define set this
     // frequency and support for class B is spotty and untested, so this
     // frequency is not configured here.
-    #elif defined(CFG_us915)
+
+   #elif defined(CFG_us915)
     // NA-US channels 0-71 are configured automatically
     // but only one group of 8 should (a subband) should be active
     // TTN recommends the second sub band, 1 in a zero based count.
@@ -258,12 +259,30 @@ void setup() {
     LMIC.dn2Dr = DR_SF9;
 
     // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
-    LMIC_setDrTxpow(DR_SF7,14);
+    // Only use one channel and SF
+    forceTxSingleChannelDr();
 
     // Start job
     do_send(&sendjob);
 }
-
+// Disables all channels, except for the one defined above, and sets the
+  // data rate (SF). This only affects uplinks; for downlinks the default
+  // channels or the configuration from the OTAA Join Accept are used.
+  //
+  // Not LoRaWAN compliant; FOR TESTING ONLY!
+  //
+  void forceTxSingleChannelDr() {
+    // Define the single channel and data rate (SF) to use
+   int channel = 0;
+   int dr = DR_SF7;
+    for(int i=0; i<9; i++) { // For EU; for US use i<71
+        if(i != channel) {
+            LMIC_disableChannel(i);
+        }
+    }
+    // Set data rate (SF) and transmit power for uplink
+    LMIC_setDrTxpow(dr, 14);
+}
 void loop() {
     os_runloop_once();
 }
